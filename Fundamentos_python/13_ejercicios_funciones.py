@@ -61,30 +61,84 @@ ventas_crudas = [
   },
 ]
 
-"""Ejercicio 1: Eliminar los espacios extra y aplica formato titulo"""
- #input: mArÍa fErNaNdA lÓpEz
- #output:"Maria Fernada Lopez"
+""" Ejercicio 1: Eliminar los espacios extra y aplica formato título. """
+# Input: "   mArÍa fErNaNdA lÓpEz  "
+# Output: "María Fernanda López"
 def limpiar_nombre(nombre_crudo: str | None):
     if not nombre_crudo or not nombre_crudo.strip():
         return "Desconocido"
     return nombre_crudo.strip().title()
-    
 
-"""Ejercicio 2: Extraccion de dominio de correo"""
-#Input: "lucia@finanzas.pe"
-#output:"finanzas.pe"
-
-def extraer_dominio(correo:str ):
+""" Ejercicio 2: Extractor de dominio de correo """
+# Input: "lucia@finanzas.pe"
+# Output: "finanzas.pe"
+def extraer_dominio(correo: str):
     if not correo or "@" not in correo:
-        return "correo invalido"
-    #split("@") divide el texto  en una lista  de 2 partes; [-1] toma la ultima posicion 
+        return "Correo inválido"
+    # split("@") divide el texto en una lista de 2 partes; [-1] toma la última posición
     return correo.strip().lower().split("@")[-1]
 
-"""Ejercicio 3: Validador de divisas, solo se permite PEN, USD y MONTOS, monto minimo de 10"""
-#Input: "lucia@finanzas.pe"
-#output:"finanzas.pe"
-def es_transaccion_valida(moneda:  str, subtotal: float):
-    monedas_permitidas=("PEN", "USD")
-    if subtotal >=0 and moneda.upper() in monedas_permitidas:
-        return  True
+""" Ejercicio 3: Validador de moneda, solo se permite PEN, USD y montos """
+def es_transaccion_valida(monto: float, moneda: str):
+    monedas_permitidas = ("PEN", "USD")
+    if monto >= 0 and moneda.upper() in monedas_permitidas:
+        return True
     return False
+
+""" Ejercicio 4: Conversor de divisas con tasa configurable """
+def convertir_a_usd(monto: float, moneda_origen: str, tasa_cambio: float):
+    moneda = moneda_origen.upper()
+    if moneda == "PEN":
+        return round(monto / tasa_cambio, 2)
+    if moneda == "USD":
+        return round(monto, 2)
+
+
+""" Ejercicio 5: Orquestador del pipiline """
+# 1. Filtrar por el estado del negocio, tiene que estar COMPLETADO
+# 2. Limpiar los nombres
+# 3. Determinar el dominio
+# 4. Validar la transaccion
+# 5. Convertir a USD
+# 6. Construir un diccionario de salida
+
+def ejecutar_pipeline(datos_crudos: list[dict]):
+
+    registros_limpios = []
+    descartados = 0
+    monto_total = 0
+
+    for fila in datos_crudos:
+        # 1. Filtrar por el estado del negocio
+        if fila["estado"] != "COMPLETADO":
+            descartados = descartados + 1
+            continue
+
+        # 4. Validar la transacción
+        if not es_transaccion_valida(fila["subtotal"], fila["moneda"]):
+            descartados = descartados + 1
+            continue
+
+        # 2. Limpiar los nombres
+        fila["cliente"] = limpiar_nombre(fila["cliente"])
+
+        # 3. Determinar el dominio
+        fila["dominio"] = extraer_dominio(fila["email"])
+
+        # 5. Convertir a USD
+        fila["subtotal"] = convertir_a_usd(fila["subtotal"], fila["moneda"], 3.5)
+        monto_total = monto_total + fila["subtotal"]
+        fila["moneda"] = "USD"
+
+        registros_limpios.append(fila)
+
+    return {
+        "data_final": registros_limpios,
+        "registros_procesados": len(datos_crudos),
+        "registros_descartados": descartados,
+        "monto_total_usd": monto_total
+    }
+
+from pprint import pprint
+resultado = ejecutar_pipeline(ventas_crudas)
+pprint(resultado)
